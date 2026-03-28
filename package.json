@@ -1,0 +1,14 @@
+{
+  "name": "explore-odisha-deploy",
+  "version": "1.0.0",
+  "description": "Root configuration for Render Deployment",
+  "main": "backend/server.js",
+  "scripts": {
+    "postinstall": "cd backend && npm install && cd ../frontend && npm install",
+    "build": "cd frontend && npm run build",
+    "start": "cd backend && node server.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  }
+}
