@@ -1,0 +1,161 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Base Styles */
+:root {
+    --primary: #0ea5e9;
+    --primary-dark: #0284c7;
+    --accent: #a855f7;
+    --dark: #1e293b;
+    --light: #f8fafc;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html {
+    scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Inter', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    background-color: #f8fafc;
+}
+
+.dark body {
+    background-color: #0f172a;
+}
+
+/* Custom Components */
+@layer components {
+    .btn-primary {
+        @apply bg-primary-500 hover:bg-primary-600 text-white font-medium py-2 px-4 rounded-lg transition-all duration-200 shadow-md hover:shadow-lg;
+    }
+
+    .btn-secondary {
+        @apply bg-gray-200 hover:bg-gray-300 text-gray-800 font-medium py-2 px-4 rounded-lg transition-all duration-200 dark:bg-gray-700 dark:text-gray-200;
+    }
+
+    .card {
+        @apply bg-white rounded-xl shadow-md overflow-hidden transition-all duration-300 hover:shadow-lg dark:bg-gray-800;
+    }
+
+    .input-field {
+        @apply w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-transparent outline-none transition-all dark:bg-gray-700 dark:border-gray-600 dark:text-white;
+    }
+
+    .glass-effect {
+        @apply bg-white/80 backdrop-blur-md dark:bg-gray-900/80;
+    }
+}
+
+/* Animations */
+@keyframes float {
+
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    50% {
+        transform: translateY(-10px);
+    }
+}
+
+.float-animation {
+    animation: float 3s ease-in-out infinite;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #c1c1c1;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #a1a1a1;
+}
+
+/* Leaflet Map Custom Styles */
+.leaflet-container {
+    font-family: 'Inter', system-ui, sans-serif;
+}
+
+.custom-marker {
+    background: #0ea5e9;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+/* Dark mode map adjustments */
+.dark .leaflet-tile-pane {
+    filter: brightness(0.8) invert(1) hue-rotate(180deg);
+}
+
+/* Loading Spinner */
+.spinner {
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-left-color: #0ea5e9;
+    border-radius: 50%;
+    width: 40px;
+    height: 40px;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* Gradient Background */
+.gradient-bg {
+    background: linear-gradient(135deg, #0ea5e9 0%, #a855f7 100%);
+}
+
+/* Glass morphism */
+.glass {
+    background: rgba(255, 255, 255, 0.1);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.dark .glass {
+    background: rgba(15, 23, 42, 0.6);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+/* Voice Assistant Pulse */
+.voice-pulse {
+    animation: voicePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes voicePulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scale(1.1);
+        opacity: 0.8;
+    }
+}

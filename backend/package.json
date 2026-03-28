@@ -1,0 +1,26 @@
+{
+    "name": "smart-tourism-bhubaneswar-ai-backend",
+    "version": "1.0.0",
+    "description": "Backend API for TravelMate Bhubaneswar AI",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "nodemon server.js",
+        "seed": "node data/seed.js"
+    },
+    "dependencies": {
+        "axios": "^1.6.2",
+        "bcryptjs": "^2.4.3",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "google-auth-library": "^9.2.0",
+        "jsonwebtoken": "^9.0.2",
+        "mongoose": "^8.0.3",
+        "multer": "^1.4.5-lts.1",
+        "node-fetch": "^2.7.0"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.2"
+    }
+}
