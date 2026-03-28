@@ -237,4 +237,4 @@ MIT License - feel free to use this project for learning and development.
 
 ---
 
-Built with ❤️ for Bhubaneswar Tourism
+Built with ❤️ from Bibek
