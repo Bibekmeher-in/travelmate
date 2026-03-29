@@ -5,7 +5,7 @@
   "main": "backend/server.js",
   "scripts": {
     "postinstall": "cd backend && npm install && cd ../frontend && npm install",
-    "build": "cd frontend && npm run build",
+    "build": "npm install && cd frontend && npm run build",
     "start": "cd backend && node server.js"
   },
   "engines": {
