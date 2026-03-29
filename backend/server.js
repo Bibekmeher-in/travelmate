@@ -68,19 +68,10 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'OK', message: 'TravelMate Bhubaneswar AI API is running' });
 });
 
-// Serve frontend in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, '../frontend/build')));
-  
-  app.get('*', (req, res) => {
-    res.sendFile(path.resolve(__dirname, '../frontend', 'build', 'index.html'));
-  });
-} else {
-  // Root route for development
-  app.get('/', (req, res) => {
-    res.send('API is running...');
-  });
-}
+// Root route
+app.get('/', (req, res) => {
+  res.send('TravelMate Bhubaneswar API is running...');
+});
 
 // Error handling middleware
 app.use((err, req, res, next) => {
