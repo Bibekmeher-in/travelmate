@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiFilter, FiMapPin, FiStar, FiNavigation } from 'react-icons/fi';
+import { FiFilter, FiMapPin, FiNavigation } from 'react-icons/fi';
 import PlaceCard from '../components/PlaceCard';
 import MapView from '../components/MapView';
 import { placesAPI } from '../utils/api';
@@ -24,6 +24,7 @@ const Explore = ({ userLocation }) => {
 
     useEffect(() => {
         loadPlaces();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters, userLocation]);
 
     const loadCategories = async () => {
@@ -70,12 +71,6 @@ const Explore = ({ userLocation }) => {
             }
             setSearchParams(searchParams);
         }
-    };
-
-    const categoryIcons = {
-        temple: '🛕', tourist_place: '🏛️', park: '🌳', mall: '🏬',
-        hotel: '🏨', restaurant: '🍽️', cafe: '☕', museum: '🏛️',
-        historical: '📜', shopping: '🛍️'
     };
 
     return (

@@ -1,14 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiUsers, FiMapPin, FiHome, FiCoffee, FiPlus, FiEdit, FiTrash } from 'react-icons/fi';
+import { FiUsers, FiMapPin, FiHome, FiCoffee, FiPlus } from 'react-icons/fi';
 import { useAuth } from '../context/AuthContext';
 import api from '../utils/api';
 
 const AdminDashboard = () => {
     const navigate = useNavigate();
-    const { user, isAdmin } = useAuth();
+    const { isAdmin } = useAuth();
     const [stats, setStats] = useState({ users: 0, places: 0, hotels: 0, restaurants: 0 });
-    const [activeTab, setActiveTab] = useState('overview');
 
     useEffect(() => {
         if (!isAdmin) {
@@ -25,14 +24,6 @@ const AdminDashboard = () => {
             console.error('Error loading stats:', error);
         }
     };
-
-    const menuItems = [
-        { id: 'overview', label: 'Overview', icon: FiMapPin },
-        { id: 'users', label: 'Users', icon: FiUsers },
-        { id: 'places', label: 'Places', icon: FiMapPin },
-        { id: 'hotels', label: 'Hotels', icon: FiHome },
-        { id: 'restaurants', label: 'Restaurants', icon: FiCoffee },
-    ];
 
     return (
         <div className="min-h-screen pt-16 sm:pt-20 pb-8 sm:pb-12">

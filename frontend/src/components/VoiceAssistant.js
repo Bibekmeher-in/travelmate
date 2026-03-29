@@ -49,6 +49,7 @@ const VoiceAssistant = ({ onCommand }) => {
                 recognitionRef.current.stop();
             }
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
     const startListening = () => {

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiFilter, FiMapPin, FiStar, FiPhone, FiExternalLink } from 'react-icons/fi';
+import { FiMapPin, FiStar, FiExternalLink } from 'react-icons/fi';
 import { hotelsAPI } from '../utils/api';
 
 const Hotels = ({ userLocation }) => {
@@ -14,6 +13,7 @@ const Hotels = ({ userLocation }) => {
 
     useEffect(() => {
         loadHotels();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters, userLocation]);
 
     const loadHotels = async () => {

@@ -1,6 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { FiFilter, FiMapPin, FiStar, FiClock } from 'react-icons/fi';
+import { FiMapPin, FiStar, FiClock } from 'react-icons/fi';
 import { restaurantsAPI } from '../utils/api';
 
 const Restaurants = ({ userLocation }) => {
@@ -10,6 +9,7 @@ const Restaurants = ({ userLocation }) => {
 
     useEffect(() => {
         loadRestaurants();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [filters, userLocation]);
 
     const loadRestaurants = async () => {

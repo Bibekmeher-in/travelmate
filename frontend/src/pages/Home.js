@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { FiSearch, FiMapPin, FiCompass, FiTrendingUp, FiStar, FiNavigation, FiPhone, FiClock, FiCalendar } from 'react-icons/fi';
+import { FiSearch, FiMapPin, FiCompass, FiTrendingUp, FiStar, FiPhone, FiCalendar } from 'react-icons/fi';
 import PlaceCard from '../components/PlaceCard';
 import MapView from '../components/MapView';
-import { placesAPI, weatherAPI, aiAPI } from '../utils/api';
+import { placesAPI, weatherAPI } from '../utils/api';
 
 const Home = ({ userLocation, command, setCommand }) => {
     const navigate = useNavigate();
@@ -17,6 +17,7 @@ const Home = ({ userLocation, command, setCommand }) => {
 
     useEffect(() => {
         loadData();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [userLocation]);
 
     // Handle voice commands
@@ -38,6 +39,7 @@ const Home = ({ userLocation, command, setCommand }) => {
             }
             setCommand(null);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [command, navigate, setCommand]);
 
     const loadData = async () => {
@@ -81,12 +83,6 @@ const Home = ({ userLocation, command, setCommand }) => {
         if (searchQuery.trim()) {
             navigate(`/explore?search=${encodeURIComponent(searchQuery)}`);
         }
-    };
-
-    const categoryIcons = {
-        temple: '🛕', tourist_place: '🏛️', park: '🌳', mall: '🏬',
-        hotel: '🏨', restaurant: '🍽️', cafe: '☕', museum: '🏛️',
-        historical: '📜', shopping: '🛍️'
     };
 
     if (loading) {

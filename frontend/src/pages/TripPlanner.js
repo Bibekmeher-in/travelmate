@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { FiCalendar, FiDollarSign, FiCompass, FiStar } from 'react-icons/fi';
+import { FiCalendar, FiDollarSign } from 'react-icons/fi';
 import { aiAPI } from '../utils/api';
 
 const TripPlanner = ({ userLocation }) => {

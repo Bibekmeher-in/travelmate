@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
-import { FiStar, FiClock, FiMapPin, FiPhone, FiCalendar, FiNavigation, FiShare2, FiHeart, FiArrowLeft } from 'react-icons/fi';
+import { useParams, useNavigate } from 'react-router-dom';
+import { FiStar, FiMapPin, FiPhone, FiNavigation, FiShare2, FiHeart } from 'react-icons/fi';
 import MapView from '../components/MapView';
 import PlaceCard from '../components/PlaceCard';
 import { placesAPI, transportAPI, routingAPI } from '../utils/api';
-import { useAuth } from '../context/AuthContext';
 
 const PlaceDetail = ({ userLocation }) => {
     const { id } = useParams();
     const navigate = useNavigate();
-    const { user } = useAuth();
     const [place, setPlace] = useState(null);
     const [nearby, setNearby] = useState([]);
     const [transportOptions, setTransportOptions] = useState([]);
@@ -17,11 +15,11 @@ const PlaceDetail = ({ userLocation }) => {
     const [activeTab, setActiveTab] = useState('overview');
     const [showRoute, setShowRoute] = useState(false);
     const [routeGeometry, setRouteGeometry] = useState(null);
-    const [routeInfo, setRouteInfo] = useState(null);
     const [loadingRoute, setLoadingRoute] = useState(false);
 
     useEffect(() => {
         loadPlace();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const loadPlace = async () => {
@@ -65,10 +63,6 @@ const PlaceDetail = ({ userLocation }) => {
             if (response.data && response.data.routes && response.data.routes.length > 0) {
                 const route = response.data.routes[0];
                 setRouteGeometry(route.geometry);
-                setRouteInfo({
-                    distance: (route.distance / 1000).toFixed(2),
-                    duration: Math.round(route.duration / 60)
-                });
                 setShowRoute(true);
             }
         } catch (error) {
@@ -84,11 +78,6 @@ const PlaceDetail = ({ userLocation }) => {
                 const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
                 const distance = R * c;
                 const duration = Math.round((distance / 30) * 60); // Assume 30 km/h avg speed
-                
-                setRouteInfo({
-                    distance: distance.toFixed(2),
-                    duration: duration
-                });
                 setShowRoute(true);
             }
         } finally {
@@ -128,13 +117,12 @@ const PlaceDetail = ({ userLocation }) => {
         if (place && userLocation && !showRoute && !routeGeometry) {
             getRoute(userLocation, place);
         }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [activeTab, userLocation, place]);
 
-    // Reset route when place changes
     useEffect(() => {
         setShowRoute(false);
         setRouteGeometry(null);
-        setRouteInfo(null);
     }, [id]);
 
     const getCategoryIcon = (category) => {
