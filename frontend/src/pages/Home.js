@@ -173,7 +173,7 @@ const Home = ({ userLocation, command, setCommand }) => {
             {/* Categories */}
             <div className="max-w-7xl mx-auto px-4 py-8">
                 <div className="flex overflow-x-auto gap-4 pb-4 scrollbar-hide">
-                    {categories.map((cat) => (
+                    {categories?.map((cat) => (
                         <Link
                             key={cat.id}
                             to={`/explore?category=${cat.id}`}

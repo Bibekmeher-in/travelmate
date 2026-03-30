@@ -130,7 +130,7 @@ const Explore = ({ userLocation }) => {
                                     className="input-field"
                                 >
                                     <option value="">All Categories</option>
-                                    {categories.map(cat => (
+                                    {categories?.map(cat => (
                                         <option key={cat.id} value={cat.id}>
                                             {cat.icon} {cat.name}
                                         </option>
@@ -184,7 +184,7 @@ const Explore = ({ userLocation }) => {
                     >
                         All
                     </button>
-                    {categories.map(cat => (
+                    {categories?.map(cat => (
                         <button
                             key={cat.id}
                             onClick={() => handleFilterChange('category', cat.id)}
@@ -213,7 +213,7 @@ const Explore = ({ userLocation }) => {
                     </div>
                 ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 sm:gap-6">
-                        {places.map(place => (
+                        {places?.map(place => (
                             <PlaceCard key={place._id} place={place} showDistance={true} />
                         ))}
                     </div>
