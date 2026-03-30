@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const BASE_URL = (process.env.REACT_APP_API_URL || 'http://localhost:5000').replace(/\/$/, '');
 const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : `${BASE_URL}/api`;
 const OSRM_URL = 'https://router.project-osrm.org';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
@@ -28,8 +28,8 @@ api.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
+      // Clear stale token but don't force redirect — let React Router handle it
       localStorage.removeItem('token');
-      window.location.href = '/login';
     }
     return Promise.reject(error);
   }

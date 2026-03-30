@@ -169,10 +169,11 @@ app.use((err, req, res, next) => {
 // ─── START ───────────────────────────────────────────────────────────────────
 const PORT = process.env.PORT || 5000;
 
-connectDB().then(() => {
-    app.listen(PORT, () => {
-        console.log(`🚀 Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
-    });
+// Start HTTP server first so Render's health check passes immediately,
+// then connect to MongoDB in the background.
+app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT} [${process.env.NODE_ENV || 'development'}]`);
+    connectDB(); // connect after port is bound
 });
 
 // Handle uncaught exceptions (prevent silent crashes)
