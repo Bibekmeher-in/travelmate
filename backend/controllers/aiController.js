@@ -2,91 +2,80 @@ const Place = require('../models/Place');
 const Hotel = require('../models/Hotel');
 const Restaurant = require('../models/Restaurant');
 const Trip = require('../models/Trip');
-const User = require('../models/User');
 
-// Calculate distance helper
 const calculateDistance = (lat1, lng1, lat2, lng2) => {
     const R = 6371;
     const dLat = (lat2 - lat1) * Math.PI / 180;
     const dLng = (lng2 - lng1) * Math.PI / 180;
-    const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    const a = Math.sin(dLat / 2) ** 2 +
         Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-        Math.sin(dLng / 2) * Math.sin(dLng / 2);
-    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    return R * c;
+        Math.sin(dLng / 2) ** 2;
+    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 };
 
-// @desc    AI Trip Planner - Generate itinerary
-// @route   POST /api/ai/trip-planner
-// @access  Private
+const safeCoords = (item) => {
+    const c = item?.location?.coordinates;
+    return Array.isArray(c) && c.length >= 2 ? { lat: c[1], lng: c[0] } : null;
+};
+
+// @route POST /api/ai/trip-planner
 exports.planTrip = async (req, res) => {
     try {
-        const {
-            budget,
-            days,
-            interests,
-            startDate,
-            endDate,
-            travelers = 1,
-            lat,
-            lng
-        } = req.body;
+        const { budget, days, interests, startDate, travelers = 1, lat, lng } = req.body;
 
-        // Get user location or use default Bhubaneswar coordinates
-        const userLat = lat || 20.2961;
-        const userLng = lng || 85.8245;
+        if (!days || isNaN(days) || days < 1) {
+            return res.status(400).json({ success: false, message: 'Please provide a valid number of days' });
+        }
 
-        // Determine categories based on interests
+        const userLat = parseFloat(lat) || 20.2961;
+        const userLng = parseFloat(lng) || 85.8245;
+        const numDays = Math.min(parseInt(days), 30);
+        const numTravelers = Math.max(1, parseInt(travelers));
+
         const interestCategories = {
-            'temples': ['temple', 'historical'],
-            'nature': ['park', 'tourist_place'],
-            'shopping': ['mall', 'shopping'],
-            'history': ['museum', 'historical'],
-            'food': ['restaurant', 'cafe'],
-            'culture': ['temple', 'museum', 'historical']
+            temples: ['temple', 'historical'],
+            nature: ['park', 'tourist_place'],
+            shopping: ['mall', 'shopping'],
+            history: ['museum', 'historical'],
+            food: ['restaurant', 'cafe'],
+            culture: ['temple', 'museum', 'historical']
         };
 
         let selectedCategories = [];
-        if (interests && interests.length > 0) {
+        if (Array.isArray(interests) && interests.length > 0) {
             interests.forEach(interest => {
-                if (interestCategories[interest]) {
-                    selectedCategories.push(...interestCategories[interest]);
-                }
+                const cats = interestCategories[interest];
+                if (cats) selectedCategories.push(...cats);
             });
         }
-
-        // If no interests specified, include all
         if (selectedCategories.length === 0) {
             selectedCategories = ['temple', 'tourist_place', 'park', 'museum', 'historical', 'shopping'];
         }
+        selectedCategories = [...new Set(selectedCategories)];
 
-        // Get places based on categories
-        const places = await Place.find({
-            category: { $in: selectedCategories }
-        }).sort({ rating: -1, popularity: -1 }).limit(50).lean();
+        const places = await Place.find({ category: { $in: selectedCategories } })
+            .sort({ rating: -1, popularity: -1 })
+            .limit(50)
+            .lean();
 
-        // Add distance to each place
-        const placesWithDistance = places.map(place => ({
-            ...place,
-            distanceKm: calculateDistance(
-                userLat, userLng,
-                place.location.coordinates[1], place.location.coordinates[0]
-            ).toFixed(2)
-        }));
+        const placesWithDistance = places
+            .filter(p => safeCoords(p) !== null)
+            .map(p => {
+                const { lat: pLat, lng: pLng } = safeCoords(p);
+                return {
+                    ...p,
+                    distanceKm: parseFloat(calculateDistance(userLat, userLng, pLat, pLng).toFixed(2))
+                };
+            })
+            .sort((a, b) => ((b.rating || 0) + (b.popularity || 0) / 100) - ((a.rating || 0) + (a.popularity || 0) / 100));
 
-        // Sort by rating + popularity score
-        placesWithDistance.sort((a, b) =>
-            (b.rating + b.popularity / 100) - (a.rating + a.popularity / 100)
-        );
-
-        // Generate daily itinerary
+        const maxPerDay = 4;
         const itinerary = [];
-        const placesPerDay = Math.ceil(placesWithDistance.length / days);
+        const baseDate = startDate ? new Date(startDate) : new Date();
 
-        for (let day = 1; day <= days; day++) {
-            const start = (day - 1) * placesPerDay;
-            const end = Math.min(start + placesPerDay, placesWithDistance.length);
-            const dayPlaces = placesWithDistance.slice(start, end);
+        for (let day = 1; day <= numDays; day++) {
+            const start = (day - 1) * maxPerDay;
+            const dayPlaces = placesWithDistance.slice(start, start + maxPerDay);
 
             const activities = dayPlaces.map((place, index) => ({
                 time: `${9 + index * 2}:00`,
@@ -94,330 +83,207 @@ exports.planTrip = async (req, res) => {
                 placeName: place.name,
                 activity: `Visit ${place.name}`,
                 duration: place.estimatedVisitTime || '1-2 hours',
-                notes: place.tips?.[0] || `Explore ${place.category}`
+                notes: (place.tips && place.tips[0]) || `Explore ${place.category}`
             }));
 
-            // Add lunch and dinner recommendations
-            activities.push({
-                time: '12:00',
-                place: null,
-                placeName: 'Local Restaurant',
-                activity: 'Lunch break',
-                duration: '1 hour',
-                notes: 'Try local Odisha cuisine'
-            });
+            activities.push({ time: '13:00', place: null, placeName: 'Local Restaurant', activity: 'Lunch break', duration: '1 hour', notes: 'Try local Odisha cuisine' });
+            activities.push({ time: '20:00', place: null, placeName: 'Hotel', activity: 'Return to hotel', duration: '30 mins', notes: 'Rest up for tomorrow' });
 
-            activities.push({
-                time: '19:00',
-                place: null,
-                placeName: 'Hotel/Accommodation',
-                activity: 'Return to hotel',
-                duration: '30 mins',
-                notes: 'Rest for the next day'
-            });
+            const dayDate = new Date(baseDate);
+            dayDate.setDate(baseDate.getDate() + day - 1);
 
             itinerary.push({
                 day,
-                date: new Date(new Date(startDate).setDate(new Date(startDate).getDate() + day - 1)),
+                date: dayDate,
                 activities: activities.sort((a, b) => a.time.localeCompare(b.time))
             });
         }
 
-        // Calculate budget
         const budgetOptions = {
-            low: { hotelPerDay: 800, foodPerDay: 400, transportPerDay: 200 },
-            medium: { hotelPerDay: 2000, foodPerDay: 800, transportPerDay: 400 },
-            high: { hotelPerDay: 5000, foodPerDay: 2000, transportPerDay: 1000 }
+            low:    { hotelPerDay: 800,  foodPerDay: 400,  transportPerDay: 200 },
+            medium: { hotelPerDay: 2000, foodPerDay: 800,  transportPerDay: 400 },
+            high:   { hotelPerDay: 5000, foodPerDay: 2000, transportPerDay: 1000 }
+        };
+        const bs = budgetOptions[budget] || budgetOptions.medium;
+        const totalBudget = {
+            hotel:     bs.hotelPerDay * numDays * numTravelers,
+            food:      bs.foodPerDay * numDays * numTravelers,
+            transport: bs.transportPerDay * numDays,
+            entry:     500 * numDays * numTravelers,
+            misc:      1000,
+            total:     (bs.hotelPerDay * numDays * numTravelers) + (bs.foodPerDay * numDays * numTravelers) + (bs.transportPerDay * numDays) + (500 * numDays * numTravelers) + 1000
         };
 
-        const budgetSettings = budgetOptions[budget] || budgetOptions.medium;
-        const totalBudget = {
-            hotel: budgetSettings.hotelPerDay * days * travelers,
-            food: budgetSettings.foodPerDay * days * travelers,
-            transport: budgetSettings.transportPerDay * days,
-            entry: 500 * days * travelers,
-            misc: 1000,
-            total: (budgetSettings.hotelPerDay * days * travelers) +
-                (budgetSettings.foodPerDay * days * travelers) +
-                (budgetSettings.transportPerDay * days) +
-                (500 * days * travelers) + 1000
-        };
+        const recommendedHotels = await Hotel.find({}).sort({ rating: -1 }).limit(5).lean();
 
         res.json({
             success: true,
             data: {
                 itinerary,
                 budget: totalBudget,
-                recommendedHotels: await Hotel.find({})
-                    .sort({ rating: -1 })
-                    .limit(5)
-                    .lean(),
-                summary: {
-                    totalPlaces: placesWithDistance.length,
-                    days,
-                    budget,
-                    interests: interests || ['General']
-                }
+                recommendedHotels,
+                summary: { totalPlaces: placesWithDistance.length, days: numDays, budget, interests: interests || ['General'] }
             }
         });
     } catch (error) {
-        console.error('Trip planner error:', error);
-        res.status(500).json({
-            success: false,
-            message: 'Error generating trip plan',
-            error: error.message
-        });
+        console.error('planTrip error:', error.message);
+        res.status(500).json({ success: false, message: 'Error generating trip plan', error: error.message });
     }
 };
 
-// @desc    Budget Calculator
-// @route   POST /api/ai/budget-calculator
-// @access  Public
+// @route POST /api/ai/budget-calculator
 exports.calculateBudget = async (req, res) => {
     try {
-        const {
-            days,
-            travelers = 1,
-            hotelCategory,
-            foodStyle,
-            transportMode
-        } = req.body;
+        const { days, travelers = 1, hotelCategory, foodStyle, transportMode } = req.body;
 
-        // Hotel costs
-        const hotelCosts = {
-            budget: 800,
-            standard: 2000,
-            luxury: 5000
-        };
+        if (!days || isNaN(days) || days < 1) {
+            return res.status(400).json({ success: false, message: 'Please provide a valid number of days' });
+        }
 
-        // Food costs per day
-        const foodCosts = {
-            budget: 300,
-            standard: 800,
-            luxury: 2000
-        };
+        const numDays = parseInt(days);
+        const numTravelers = Math.max(1, parseInt(travelers));
 
-        // Transport costs per day
-        const transportCosts = {
-            public: 100,
-            cab: 500,
-            private: 1500
-        };
+        const hotelCosts    = { budget: 800, standard: 2000, luxury: 5000 };
+        const foodCosts     = { budget: 300, standard: 800,  luxury: 2000 };
+        const transportCosts = { public: 100, cab: 500, private: 1500 };
 
-        const hotelPerDay = hotelCosts[hotelCategory] || hotelCosts.standard;
-        const foodPerDay = foodCosts[foodStyle] || foodCosts.standard;
+        const hotelPerDay     = hotelCosts[hotelCategory] || hotelCosts.standard;
+        const foodPerDay      = foodCosts[foodStyle]      || foodCosts.standard;
         const transportPerDay = transportCosts[transportMode] || transportCosts.cab;
 
-        const total = {
-            hotel: hotelPerDay * days * travelers,
-            food: foodPerDay * days * travelers,
-            transport: transportPerDay * days,
-            entryFees: 500 * days * travelers,
-            misc: 1000,
-            total: (hotelPerDay * days * travelers) +
-                (foodPerDay * days * travelers) +
-                (transportPerDay * days) +
-                (500 * days * travelers) + 1000,
-            perPerson: ((hotelPerDay * days * travelers) +
-                (foodPerDay * days * travelers) +
-                (transportPerDay * days) +
-                (500 * days * travelers) + 1000) / travelers
+        const totals = {
+            hotel:     hotelPerDay * numDays * numTravelers,
+            food:      foodPerDay * numDays * numTravelers,
+            transport: transportPerDay * numDays,
+            entryFees: 500 * numDays * numTravelers,
+            misc:      1000,
+            total:     (hotelPerDay * numDays * numTravelers) + (foodPerDay * numDays * numTravelers) + (transportPerDay * numDays) + (500 * numDays * numTravelers) + 1000
         };
+        totals.perPerson = Math.round(totals.total / numTravelers);
 
         res.json({
             success: true,
             data: {
                 breakdown: {
-                    accommodation: {
-                        perDay: hotelPerDay,
-                        total: hotelPerDay * days * travelers,
-                        description: `${hotelCategory} category hotel`
-                    },
-                    food: {
-                        perDay: foodPerDay,
-                        total: foodPerDay * days * travelers,
-                        description: `${foodStyle} dining`
-                    },
-                    transport: {
-                        perDay: transportPerDay,
-                        total: transportPerDay * days,
-                        description: `${transportMode} transport`
-                    },
-                    entryFees: {
-                        perDay: 500,
-                        total: 500 * days * travelers,
-                        description: 'Temple and attraction entries'
-                    },
-                    miscellaneous: {
-                        total: 1000,
-                        description: 'Shopping, tips,应急'
-                    }
+                    accommodation: { perDay: hotelPerDay, total: hotelPerDay * numDays * numTravelers, description: `${hotelCategory || 'standard'} hotel` },
+                    food:          { perDay: foodPerDay,  total: foodPerDay * numDays * numTravelers,  description: `${foodStyle || 'standard'} dining` },
+                    transport:     { perDay: transportPerDay, total: transportPerDay * numDays,        description: `${transportMode || 'cab'} transport` },
+                    entryFees:     { perDay: 500, total: 500 * numDays * numTravelers, description: 'Temple and attraction entries' },
+                    miscellaneous: { total: 1000, description: 'Shopping, tips, emergency' }
                 },
-                totals: total,
+                totals,
                 currency: 'INR'
             }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error calculating budget',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Error calculating budget', error: error.message });
     }
 };
 
-// @desc    Get AI Recommendations
-// @route   GET /api/ai/recommendations
-// @access  Public
+// @route GET /api/ai/recommendations
 exports.getRecommendations = async (req, res) => {
     try {
         const { lat, lng, categories, limit = 10 } = req.query;
 
         const userLat = lat ? parseFloat(lat) : 20.2961;
         const userLng = lng ? parseFloat(lng) : 85.8245;
+        const limitNum = Math.min(50, Math.max(1, parseInt(limit)));
 
         let query = {};
-        if (categories) {
-            query.category = { $in: categories.split(',') };
-        }
+        if (categories) query.category = { $in: categories.split(',') };
 
-        // Get places and calculate score based on rating, distance, and popularity
-        const places = await Place.find(query)
-            .sort({ rating: -1, popularity: -1 })
-            .limit(parseInt(limit) * 2)
-            .lean();
+        const places = await Place.find(query).sort({ rating: -1, popularity: -1 }).limit(limitNum * 2).lean();
 
-        // Calculate recommendation score
-        const scoredPlaces = places.map(place => {
-            const distance = calculateDistance(
-                userLat, userLng,
-                place.location.coordinates[1], place.location.coordinates[0]
-            );
-
-            // Score: rating (40%) + popularity (30%) + proximity (30%)
-            const score = (
-                (place.rating / 5) * 0.4 +
-                (place.popularity / 1000) * 0.3 +
-                Math.max(0, (10 - distance) / 10) * 0.3
-            ) * 100;
-
-            return {
-                ...place,
-                distanceKm: distance.toFixed(2),
-                recommendationScore: Math.round(score)
-            };
-        });
-
-        // Sort by score and return top recommendations
-        const recommendations = scoredPlaces
+        const recommendations = places
+            .filter(p => safeCoords(p) !== null)
+            .map(place => {
+                const { lat: pLat, lng: pLng } = safeCoords(place);
+                const distance = calculateDistance(userLat, userLng, pLat, pLng);
+                const score = (
+                    ((place.rating || 0) / 5) * 0.4 +
+                    ((place.popularity || 0) / 1000) * 0.3 +
+                    Math.max(0, (10 - distance) / 10) * 0.3
+                ) * 100;
+                return { ...place, distanceKm: parseFloat(distance.toFixed(2)), recommendationScore: Math.round(score) };
+            })
             .sort((a, b) => b.recommendationScore - a.recommendationScore)
-            .slice(0, parseInt(limit));
+            .slice(0, limitNum);
 
         res.json({
             success: true,
             data: {
                 recommendations,
-                basedOn: {
-                    location: { lat: userLat, lng: userLng },
-                    categories: categories || 'all',
-                    criteria: 'rating + popularity + proximity'
-                }
+                basedOn: { location: { lat: userLat, lng: userLng }, categories: categories || 'all', criteria: 'rating + popularity + proximity' }
             }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error getting recommendations',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Error getting recommendations', error: error.message });
     }
 };
 
-// @desc    Save trip plan
-// @route   POST /api/ai/save-trip
-// @access  Private
+// @route POST /api/ai/save-trip
 exports.saveTrip = async (req, res) => {
     try {
-        const trip = await Trip.create({
-            ...req.body,
-            user: req.user.id,
-            isAIgenerated: true
-        });
+        if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
-        res.status(201).json({
-            success: true,
-            data: trip
-        });
+        const trip = await Trip.create({ ...req.body, user: req.user.id, isAIgenerated: true });
+        res.status(201).json({ success: true, data: trip });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error saving trip',
-            error: error.message
-        });
+        if (error.name === 'ValidationError') {
+            const messages = Object.values(error.errors).map(e => e.message);
+            return res.status(400).json({ success: false, message: messages.join(', ') });
+        }
+        res.status(500).json({ success: false, message: 'Error saving trip', error: error.message });
     }
 };
 
-// @desc    Get user's trips
-// @route   GET /api/ai/my-trips
-// @access  Private
+// @route GET /api/ai/my-trips
 exports.getMyTrips = async (req, res) => {
     try {
-        const trips = await Trip.find({ user: req.user.id })
-            .sort({ createdAt: -1 })
-            .populate('itinerary.activities.place');
+        if (!req.user) return res.status(401).json({ success: false, message: 'Authentication required' });
 
-        res.json({
-            success: true,
-            data: trips
-        });
+        const trips = await Trip.find({ user: req.user.id }).sort({ createdAt: -1 });
+        res.json({ success: true, data: trips });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error fetching trips',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Error fetching trips', error: error.message });
     }
 };
 
-// @desc    Chat with AI assistant
-// @route   POST /api/ai/chat
-// @access  Public
+// @route POST /api/ai/chat
 exports.chatWithAI = async (req, res) => {
     try {
-        const { message, context } = req.body;
+        const { message } = req.body;
+        if (!message || typeof message !== 'string') {
+            return res.status(400).json({ success: false, message: 'Please provide a message' });
+        }
 
-        // Simple rule-based responses (can be enhanced with LLM integration)
         const responses = {
-            'hotel': 'Looking for hotels in Bhubaneswar? I can help you find accommodations based on your budget and preferences. Check out our Hotels section!',
-            'restaurant': 'Bhubaneswar has amazing food options! From local Odia cuisine to international dining, we have it all. Visit the Restaurants section.',
-            'temple': 'Bhubaneswar is known as the Temple City! Some famous temples include Lingaraj Temple, Mukteshwar, and Rajarani Temple.',
-            'nearby': "I can show you places nearby! Please enable location access to see what's around you.",
-            'trip': 'I can help you plan a trip! Tell me your budget, number of days, and interests.',
-            'default': 'I\'m your travel assistant for Bhubaneswar. Ask me about places, hotels, restaurants, or help planning your trip!'
+            hotel:      'Looking for hotels in Bhubaneswar? Check our Hotels section for accommodations based on your budget!',
+            restaurant: 'Bhubaneswar has amazing food! From local Odia cuisine to international dining. Visit the Restaurants section.',
+            temple:     'Bhubaneswar is the Temple City! Famous temples: Lingaraj, Mukteshwar, Rajarani, and Brahmeswara.',
+            museum:     'Great museums to visit: Odisha State Museum, Tribal Museum, and the Regional Museum of Natural History.',
+            park:       'Beautiful parks: Ekamra Kanan, Nandankanan Zoo, Buddha Jayanti Park.',
+            nearby:     'I can show places nearby! Please enable location access in your browser.',
+            trip:       'I can help you plan a trip! Use the AI Trip Planner — tell me your budget, days, and interests.',
+            emergency:  'For emergencies: Police 100, Ambulance 102, Fire 101, Tourist Police 1363.',
+            weather:    'Bhubaneswar is best visited October to March. Current season info is on your home screen.',
+            default:    "I'm your TravelMate guide for Bhubaneswar! Ask me about temples, hotels, restaurants, trip planning, or emergency services."
         };
 
         const lowerMessage = message.toLowerCase();
         let response = responses.default;
-
         for (const [key, value] of Object.entries(responses)) {
-            if (lowerMessage.includes(key)) {
-                response = value;
-                break;
-            }
+            if (key !== 'default' && lowerMessage.includes(key)) { response = value; break; }
         }
 
         res.json({
             success: true,
             data: {
                 response,
-                suggestions: ['Show nearby hotels', 'Find restaurants', 'Plan my trip', 'Show temples']
+                suggestions: ['Show nearby hotels', 'Find restaurants', 'Plan my trip', 'Show temples', 'Emergency numbers']
             }
         });
     } catch (error) {
-        res.status(500).json({
-            success: false,
-            message: 'Error in chat',
-            error: error.message
-        });
+        res.status(500).json({ success: false, message: 'Error in chat', error: error.message });
     }
 };
