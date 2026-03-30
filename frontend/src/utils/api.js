@@ -1,6 +1,7 @@
 import axios from 'axios';
 
-const API_URL = process.env.REACT_APP_API_URL || (process.env.NODE_ENV === 'production' ? '/api' : 'http://localhost:5000/api');
+const BASE_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000';
+const API_URL = BASE_URL.endsWith('/api') ? BASE_URL : `${BASE_URL}/api`;
 const OSRM_URL = 'https://router.project-osrm.org';
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org';
 
